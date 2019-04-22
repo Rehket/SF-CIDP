@@ -1,0 +1,24 @@
+{
+    "_meta": {
+        "hash": {
+            "sha256": "79408a88bfb7ab7e53aae87b85d687464faa475cde998350394d553bf247d92e"
+        },
+        "pipfile-spec": 6,
+        "requires": {
+            "python_version": "3.7"
+        },
+        "sources": [
+            {
+                "name": "pypi",
+                "url": "https://pypi.org/simple",
+                "verify_ssl": true
+            }
+        ]
+    },
+    "default": {
+        "7b084fe": {
+            "path": "./prefect"
+        }
+    },
+    "develop": {}
+}
