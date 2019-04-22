@@ -2,6 +2,7 @@ import subprocess
 
 import shutil
 import os
+import sys
 from pathlib import Path
 
 
@@ -97,9 +98,11 @@ if __name__ == "__main__":
 
     print(git_commit)
 
+    target_branch = "master"
+
     # Checkout Master
     git_diff = subprocess.run(
-        ["git", "diff", "master", "--name-only"], cwd=dir_name, capture_output=True
+        ["git", "diff", target_branch, "--name-only"], cwd=dir_name, capture_output=True
     )
 
     print(git_diff)
@@ -108,6 +111,10 @@ if __name__ == "__main__":
         git_diff.stdout.decode("utf-8").strip("\n").replace("\n", " ")
     ).split()
     print(changed_files)
+
+    if len(changed_files) == 0:
+        print("There are no Files to migrate.")
+        sys.exit()
 
     cwd = os.getcwd()
     if Path(cwd, "mdapi").exists():
