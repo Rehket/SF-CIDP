@@ -54,3 +54,6 @@ fabric.properties
 .idea/httpRequests
 
 *.log
+
+*.key
+/sfdc_config.json

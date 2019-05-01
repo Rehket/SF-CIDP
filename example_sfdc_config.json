@@ -1,0 +1,18 @@
+[
+  {
+    "alias": "DevBox1",
+    "url": "login.salesforce.com",
+    "stage_label": "Dev",
+    "user": "automation@email.com",
+    "client_id": "3MVG.1OSjryuBx1ruiZ5D9wZ.kjResiNVzoKgvl9QiSHnj",
+    "test_level": "RunSpecified"
+  },
+  {
+    "alias": "DevBox2",
+    "url": "login.salesforce.com",
+    "stage_label": "Prod",
+    "user": "automation@email.com",
+    "client_id": "3MVG9mcl.Bwls5wTfq4b.d_v_sjkS5cf6Nx6Hv3hlBSJTNw2wretdDwN8W",
+    "test_level": "RunSpecified"
+  }
+]

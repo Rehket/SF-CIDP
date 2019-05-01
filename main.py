@@ -8,17 +8,18 @@ from typing import List
 
 from loguru import logger
 
+from config import WORKING_DIR
+
+
 logger.add(
     "file_{time}.log", format="{time} {level} {message}", level="DEBUG", rotation="5 MB"
 )
-
-WORKING_DIR = "working_dir"
 
 
 def execute(cmd: List[str], cwd: str):
     logger.info(f"Executing {cmd} in shell.")
     popen = subprocess.Popen(
-        cmd, cwd=cwd, stdout=subprocess.PIPE, universal_newlines=True, shell=True
+        cmd, cwd=Path(WORKING_DIR, cwd), stdout=subprocess.PIPE, universal_newlines=True, shell=True
     )
     for stdout_line in iter(popen.stdout.readline, ""):
         yield stdout_line.strip("\n")
@@ -30,12 +31,12 @@ def execute(cmd: List[str], cwd: str):
 
 def pull_git_repo(repo_url: str) -> str:
     dir_name = os.path.split(github_url)[1][0:-4]
-    if Path(os.getcwd(), dir_name).exists():
+    if Path(os.getcwd(), WORKING_DIR, dir_name).exists():
         logger.info(f"Found {dir_name} in working directory. Deleting it.")
         os.rename(Path(os.getcwd(), dir_name), Path(os.getcwd(), dir_name + "_Copy"))
     logger.info(f"Pulling repo for {repo_url}")
     git_clone = subprocess.run(
-        ["git", "clone", github_url], cwd=".", capture_output=True
+        ["git", "clone", github_url], cwd=Path(WORKING_DIR), capture_output=True
     )
     if git_clone.returncode:
         logger.error(git_clone.stderr.decode("utf-8").strip("\n").replace("\n", " "))
@@ -44,9 +45,9 @@ def pull_git_repo(repo_url: str) -> str:
     return dir_name
 
 
-def checkout_branch(branch: str):
+def checkout_branch(branch: str, repo_dir: str):
     git_branch = subprocess.run(
-        ["git", "checkout", branch], cwd=dir_name, capture_output=True
+        ["git", "checkout", branch], cwd=Path(WORKING_DIR, repo_dir), capture_output=True
     )
     if git_branch.returncode:
         logger.error(git_branch.stderr.decode("utf-8").strip("\n").replace("\n", " "))
@@ -56,8 +57,8 @@ def checkout_branch(branch: str):
         logger.info(git_branch.stdout.decode("utf-8").strip("\n").replace("\n", " "))
 
 
-def get_branches() -> List:
-    git_branch = subprocess.run(["git", "branch"], cwd=dir_name, capture_output=True)
+def get_branches(repo_dir: str) -> List:
+    git_branch = subprocess.run(["git", "branch"], cwd=Path(WORKING_DIR, repo_dir), capture_output=True)
 
     logger.info(git_branch.stdout.decode("utf-8").strip("\n").replace("\n", " "))
     branches = [
@@ -70,18 +71,18 @@ def get_branches() -> List:
     return branches
 
 
-def checkout_or_create_branch(branch_name: str, branches: List[str]):
+def checkout_or_create_branch(branch_name: str, branches: List[str], repo_dir: str):
     if branch_name in branches:
         logger.info(f"Retrieving {branch_name}")
         git_new_branch = subprocess.run(
-            ["git", "checkout", branch_name], cwd=dir_name, capture_output=True
+            ["git", "checkout", branch_name], cwd=Path(WORKING_DIR, repo_dir), capture_output=True
         )
         logger(git_new_branch.stdout.decode("utf-8").strip("\n").replace("\n", " "))
 
     else:
         logger.info(f"Creating {branch_name}")
         git_new_branch = subprocess.run(
-            ["git", "checkout", "-b", branch_name], cwd=dir_name, capture_output=True
+            ["git", "checkout", "-b", branch_name], cwd=Path(WORKING_DIR, repo_dir), capture_output=True
         )
 
     if git_new_branch.returncode:
@@ -91,7 +92,7 @@ def checkout_or_create_branch(branch_name: str, branches: List[str]):
 
 
 def pull_sfdc_code(
-    new_files_list: str, sandbox_alias: str, metadata_items: List[str] = ["ApexClass"]
+    new_files_list: str, sandbox_alias: str, repo_dir: str, metadata_items: List[str] = ["ApexClass"]
 ):
     """
     Pulls the metadata items from the sandbox
@@ -110,7 +111,7 @@ def pull_sfdc_code(
         count = 0
         for line in execute(
             ["sfdx", "force:source:retrieve", "-u", sandbox_alias, "-m", metadata],
-            cwd=dir_name,
+            cwd=Path(os.getcwd(), WORKING_DIR, repo_dir),
         ):
             pulled_files.write(line + "\n")
             count += 1
@@ -120,7 +121,7 @@ def pull_sfdc_code(
         )
 
     git_add_changes = subprocess.run(
-        ["git", "add", "."], cwd=dir_name, capture_output=True
+        ["git", "add", "."], cwd=Path(os.getcwd(), WORKING_DIR, repo_dir), capture_output=True
     )
 
     if git_add_changes.returncode:
@@ -142,7 +143,7 @@ def commit_changes(branch_name: str, commit_message: str = None):
                 else f'"added files from sandbox {branch_name}"'
             ),
         ],
-        cwd=dir_name,
+        cwd=Path(WORKING_DIR, dir_name),
         capture_output=True,
     )
     if git_commit.returncode:
@@ -152,7 +153,7 @@ def commit_changes(branch_name: str, commit_message: str = None):
 def get_changed_files(target_branch: str, dir_name: str) -> List[str]:
     # Checkout Master
     git_diff = subprocess.run(
-        ["git", "diff", target_branch, "--name-only"], cwd=dir_name, capture_output=True
+        ["git", "diff", target_branch, "--name-only"], cwd=Path(WORKING_DIR, dir_name), capture_output=True
     )
 
     logger.info(git_diff.stdout.decode("utf-8").strip("\n").replace("\n", " "))
@@ -199,7 +200,7 @@ def convert_project_to_mdapi():
     # Change CLI to mdapi
     convert_to_metadata = subprocess.run(
         ["sfdx", "force:source:convert", "-r", "force-app", "-d", "mdapi"],
-        cwd="mdapi",
+        cwd=Path(WORKING_DIR, "mdapi"),
         capture_output=True,
         shell=True,
     )
@@ -217,17 +218,17 @@ if __name__ == "__main__":
 
     dir_name = pull_git_repo(github_url)
 
-    checkout_branch("master")
+    checkout_branch("master", dir_name)
 
-    my_branches = get_branches()
+    my_branches = get_branches(dir_name)
 
     my_branch_name = "DevBox"
 
-    checkout_or_create_branch(my_branch_name, my_branches)
+    checkout_or_create_branch(my_branch_name, my_branches, dir_name)
 
     files_list = "new_files_list.txt"
 
-    pull_sfdc_code(files_list, my_branch_name, ["ApexClass", "ApexTrigger"])
+    pull_sfdc_code(files_list, my_branch_name, dir_name, ["ApexClass", "ApexTrigger"])
 
     # Checkout Master
     commit_changes(my_branch_name)
