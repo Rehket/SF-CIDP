@@ -5,7 +5,8 @@
     "stage_label": "Dev",
     "user": "automation@email.com",
     "client_id": "3MVG.1OSjryuBx1ruiZ5D9wZ.kjResiNVzoKgvl9QiSHnj",
-    "test_level": "RunSpecified"
+    "test_level": "RunSpecified",
+    "cert": "private cert or path to private cert"
   },
   {
     "alias": "DevBox2",
@@ -13,6 +14,7 @@
     "stage_label": "Prod",
     "user": "automation@email.com",
     "client_id": "3MVG9mcl.Bwls5wTfq4b.d_v_sjkS5cf6Nx6Hv3hlBSJTNw2wretdDwN8W",
-    "test_level": "RunSpecified"
+    "test_level": "RunSpecified",
+    "cert": "private cert or path to private cert"
   }
 ]

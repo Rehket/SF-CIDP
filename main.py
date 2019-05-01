@@ -3,13 +3,14 @@ import subprocess
 import shutil
 import os
 import sys
+import json
 from pathlib import Path
 from typing import List
 
 from loguru import logger
 
-from config import WORKING_DIR
-
+import config
+from config import SalesForceInstance
 
 logger.add(
     "file_{time}.log", format="{time} {level} {message}", level="DEBUG", rotation="5 MB"
@@ -19,7 +20,7 @@ logger.add(
 def execute(cmd: List[str], cwd: str):
     logger.info(f"Executing {cmd} in shell.")
     popen = subprocess.Popen(
-        cmd, cwd=Path(WORKING_DIR, cwd), stdout=subprocess.PIPE, universal_newlines=True, shell=True
+        cmd, cwd=Path(config.WORKING_DIR, cwd), stdout=subprocess.PIPE, universal_newlines=True, shell=True
     )
     for stdout_line in iter(popen.stdout.readline, ""):
         yield stdout_line.strip("\n")
@@ -30,13 +31,13 @@ def execute(cmd: List[str], cwd: str):
 
 
 def pull_git_repo(repo_url: str) -> str:
-    dir_name = os.path.split(github_url)[1][0:-4]
-    if Path(os.getcwd(), WORKING_DIR, dir_name).exists():
+    dir_name = os.path.split(repo_url)[1][0:-4]
+    if Path(os.getcwd(), config.WORKING_DIR, dir_name).exists():
         logger.info(f"Found {dir_name} in working directory. Deleting it.")
         os.rename(Path(os.getcwd(), dir_name), Path(os.getcwd(), dir_name + "_Copy"))
     logger.info(f"Pulling repo for {repo_url}")
     git_clone = subprocess.run(
-        ["git", "clone", github_url], cwd=Path(WORKING_DIR), capture_output=True
+        ["git", "clone", repo_url], cwd=Path(config.WORKING_DIR), capture_output=True
     )
     if git_clone.returncode:
         logger.error(git_clone.stderr.decode("utf-8").strip("\n").replace("\n", " "))
@@ -47,7 +48,7 @@ def pull_git_repo(repo_url: str) -> str:
 
 def checkout_branch(branch: str, repo_dir: str):
     git_branch = subprocess.run(
-        ["git", "checkout", branch], cwd=Path(WORKING_DIR, repo_dir), capture_output=True
+        ["git", "checkout", branch], cwd=Path(config.WORKING_DIR, repo_dir), capture_output=True
     )
     if git_branch.returncode:
         logger.error(git_branch.stderr.decode("utf-8").strip("\n").replace("\n", " "))
@@ -58,7 +59,7 @@ def checkout_branch(branch: str, repo_dir: str):
 
 
 def get_branches(repo_dir: str) -> List:
-    git_branch = subprocess.run(["git", "branch"], cwd=Path(WORKING_DIR, repo_dir), capture_output=True)
+    git_branch = subprocess.run(["git", "branch"], cwd=Path(config.WORKING_DIR, repo_dir), capture_output=True)
 
     logger.info(git_branch.stdout.decode("utf-8").strip("\n").replace("\n", " "))
     branches = [
@@ -75,14 +76,14 @@ def checkout_or_create_branch(branch_name: str, branches: List[str], repo_dir: s
     if branch_name in branches:
         logger.info(f"Retrieving {branch_name}")
         git_new_branch = subprocess.run(
-            ["git", "checkout", branch_name], cwd=Path(WORKING_DIR, repo_dir), capture_output=True
+            ["git", "checkout", branch_name], cwd=Path(config.WORKING_DIR, repo_dir), capture_output=True
         )
         logger(git_new_branch.stdout.decode("utf-8").strip("\n").replace("\n", " "))
 
     else:
         logger.info(f"Creating {branch_name}")
         git_new_branch = subprocess.run(
-            ["git", "checkout", "-b", branch_name], cwd=Path(WORKING_DIR, repo_dir), capture_output=True
+            ["git", "checkout", "-b", branch_name], cwd=Path(config.WORKING_DIR, repo_dir), capture_output=True
         )
 
     if git_new_branch.returncode:
@@ -111,7 +112,7 @@ def pull_sfdc_code(
         count = 0
         for line in execute(
             ["sfdx", "force:source:retrieve", "-u", sandbox_alias, "-m", metadata],
-            cwd=Path(os.getcwd(), WORKING_DIR, repo_dir),
+            cwd=Path(os.getcwd(), config.WORKING_DIR, repo_dir),
         ):
             pulled_files.write(line + "\n")
             count += 1
@@ -121,7 +122,7 @@ def pull_sfdc_code(
         )
 
     git_add_changes = subprocess.run(
-        ["git", "add", "."], cwd=Path(os.getcwd(), WORKING_DIR, repo_dir), capture_output=True
+        ["git", "add", "."], cwd=Path(os.getcwd(), config.WORKING_DIR, repo_dir), capture_output=True
     )
 
     if git_add_changes.returncode:
@@ -130,7 +131,7 @@ def pull_sfdc_code(
         )
 
 
-def commit_changes(branch_name: str, commit_message: str = None):
+def commit_changes(branch_name: str, dir_name: str, commit_message: str = None):
     # Checkout Master
     git_commit = subprocess.run(
         [
@@ -143,7 +144,7 @@ def commit_changes(branch_name: str, commit_message: str = None):
                 else f'"added files from sandbox {branch_name}"'
             ),
         ],
-        cwd=Path(WORKING_DIR, dir_name),
+        cwd=Path(config.WORKING_DIR, dir_name),
         capture_output=True,
     )
     if git_commit.returncode:
@@ -153,7 +154,7 @@ def commit_changes(branch_name: str, commit_message: str = None):
 def get_changed_files(target_branch: str, dir_name: str) -> List[str]:
     # Checkout Master
     git_diff = subprocess.run(
-        ["git", "diff", target_branch, "--name-only"], cwd=Path(WORKING_DIR, dir_name), capture_output=True
+        ["git", "diff", target_branch, "--name-only"], cwd=Path(config.WORKING_DIR, dir_name), capture_output=True
     )
 
     logger.info(git_diff.stdout.decode("utf-8").strip("\n").replace("\n", " "))
@@ -200,7 +201,7 @@ def convert_project_to_mdapi():
     # Change CLI to mdapi
     convert_to_metadata = subprocess.run(
         ["sfdx", "force:source:convert", "-r", "force-app", "-d", "mdapi"],
-        cwd=Path(WORKING_DIR, "mdapi"),
+        cwd=Path(config.WORKING_DIR, "mdapi"),
         capture_output=True,
         shell=True,
     )
@@ -211,7 +212,7 @@ def convert_project_to_mdapi():
         )
 
 
-if __name__ == "__main__":
+def run_demo():
     print("Let's Start!")
 
     github_url = "https://github.com/Rehket/Errors-In-SalesForce.git"
@@ -262,21 +263,101 @@ if __name__ == "__main__":
         )
     else:
         for line in execute(
-            [
-                "sfdx",
-                "force:mdapi:deploy",
-                "-d",
-                "src",
-                "-c",
-                "-u",
-                my_branch_name,
-                "-w",
-                "10",
-                "-l",
-                "RunSpecifiedTests",
-                "-r",
-                test_class_string,
-            ],
-            cwd="mdapi",
+                [
+                    "sfdx",
+                    "force:mdapi:deploy",
+                    "-d",
+                    "src",
+                    "-c",
+                    "-u",
+                    my_branch_name,
+                    "-w",
+                    "10",
+                    "-l",
+                    "RunSpecifiedTests",
+                    "-r",
+                    test_class_string,
+                ],
+                cwd="mdapi",
         ):
             logger.info(line)
+
+
+def log_out_of_orgs(user_list=List[str]):
+    # Change CLI to mdapi
+    for user in user_list:
+        log_out_of_org = subprocess.run(
+            ["sfdx", "force:auth:logout", "-u", f"{user}", "-p"],
+            cwd=".",
+            capture_output=True,
+            shell=True,
+        )
+        if log_out_of_org.returncode:
+            logger.error(
+                log_out_of_org.stderr.decode("utf-8").strip("\n").replace("\n", " ")
+            )
+        else:
+            logger.warning(log_out_of_org.stdout.decode("utf-8").strip("\n").replace("\n", " "))
+
+
+def get_active_orgs() -> dict:
+    get_org_list = subprocess.run(
+        ["sfdx", "force:org:list", "--json"],
+        cwd=".",
+        capture_output=True,
+        shell=True,
+    )
+
+    if get_org_list.returncode:
+        logger.error(
+            get_org_list.stderr.decode("utf-8").strip("\n").replace("\n", " ")
+        )
+        return json.loads(get_org_list.stderr.decode("utf-8"))
+
+    return json.loads(get_org_list.stdout.decode("utf-8"))
+
+
+def log_out_of_staging_orgs():
+    users = []
+
+    for conf in config.instance_config_options:
+        users.append(conf.user)
+
+    my_orgs = get_active_orgs()
+
+    users_to_log_out_of = []
+
+    logger.info(f"orgId-username")
+    for org in my_orgs["result"]["nonScratchOrgs"]:
+        logger.info(f"{org['orgId']}-{org['username']}")
+        if org["username"] in users:
+            users_to_log_out_of.append(org["username"])
+
+    if len(users_to_log_out_of) > 0:
+        log_out_of_orgs(user_list=users_to_log_out_of)
+
+
+def jwt_org_auth(sfdc_instance: SalesForceInstance):
+    # Change CLI to mdapi
+
+    log_into_org = subprocess.run(
+        ["sfdx", "force:auth:jwt:grant", "-u", f"{sfdc_instance.user}", "-f", f"{sfdc_instance.cert}", "-i", f"{sfdc_instance.client_id}", "-a", f"{sfdc_instance.alias}"],
+        cwd=".",
+        capture_output=True,
+        shell=True,
+    )
+    if log_into_org.returncode:
+        logger.error(
+            log_into_org.stderr.decode("utf-8").strip("\n").replace("\n", " ")
+        )
+    else:
+        logger.warning(log_into_org.stdout.decode("utf-8").strip("\n").replace("\n", " "))
+
+
+if __name__ == "__main__":
+
+    log_out_of_staging_orgs()
+
+    jwt_org_auth(config.instance_config_options[0])
+
+
