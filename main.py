@@ -12,6 +12,8 @@ logger.add(
     "file_{time}.log", format="{time} {level} {message}", level="DEBUG", rotation="5 MB"
 )
 
+WORKING_DIR = "working_dir"
+
 
 def execute(cmd: List[str], cwd: str):
     logger.info(f"Executing {cmd} in shell.")
