@@ -35,7 +35,6 @@ def pull_git_repo(repo_url: str) -> str:
     git_clone = subprocess.run(
         ["git", "clone", github_url], cwd=".", capture_output=True
     )
-
     if git_clone.returncode:
         logger.error(git_clone.stderr.decode("utf-8").strip("\n").replace("\n", " "))
         sys.exit(git_clone.returncode)
@@ -89,7 +88,15 @@ def checkout_or_create_branch(branch_name: str, branches: List[str]):
         )
 
 
-def pull_sfdc_code(new_files_list: str, metadata_items: List[str] = ["ApexClass"]):
+def pull_sfdc_code(
+    new_files_list: str, sandbox_alias: str, metadata_items: List[str] = ["ApexClass"]
+):
+    """
+    Pulls the metadata items from the sandbox
+    :param new_files_list:
+    :param metadata_items:
+    :return:
+    """
     # Now Pulling Code
 
     metadata = ""
@@ -100,7 +107,7 @@ def pull_sfdc_code(new_files_list: str, metadata_items: List[str] = ["ApexClass"
     with open(new_files_list, "w") as pulled_files:
         count = 0
         for line in execute(
-            ["sfdx", "force:source:retrieve", "-u", my_branch_name, "-m", metadata],
+            ["sfdx", "force:source:retrieve", "-u", sandbox_alias, "-m", metadata],
             cwd=dir_name,
         ):
             pulled_files.write(line + "\n")
@@ -168,7 +175,11 @@ def copy_changed_files_and_get_tests(changed_files: List[str], dir_name: str):
 
         if file.endswith("-meta.xml"):
             continue
-        if file.lower()[0:-4].endswith("test") or file.lower()[0:-4].endswith("tc") and file.endswith(".cls"):
+        if (
+            file.lower()[0:-4].endswith("test")
+            or file.lower()[0:-4].endswith("tc")
+            and file.endswith(".cls")
+        ):
             # It is a test Class
             test_classes.append(os.path.split(file)[1][0:-4])
         shutil.copy(Path(os.getcwd(), dir_name, file), new_path)
@@ -208,13 +219,13 @@ if __name__ == "__main__":
 
     my_branches = get_branches()
 
-    my_branch_name = "dev_box"
+    my_branch_name = "DevBox"
 
     checkout_or_create_branch(my_branch_name, my_branches)
 
     files_list = "new_files_list.txt"
 
-    pull_sfdc_code(files_list, ["ApexClass", "ApexTrigger"])
+    pull_sfdc_code(files_list, my_branch_name, ["ApexClass", "ApexTrigger"])
 
     # Checkout Master
     commit_changes(my_branch_name)
@@ -243,7 +254,9 @@ if __name__ == "__main__":
 
     if len(test_class_string) > 200:
 
-        logger.error("Woah... You are trying to run a bunch of tests... Try making a smaller deployment.")
+        logger.error(
+            "Woah... You are trying to run a bunch of tests... Try making a smaller deployment."
+        )
     else:
         for line in execute(
             [
