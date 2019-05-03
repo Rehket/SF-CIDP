@@ -12,9 +12,7 @@ from loguru import logger
 import config
 from config import SalesForceInstance
 
-logger.add(
-    sys.stdout, format="{time} {level} {message}", level="DEBUG"
-)
+logger.add(sys.stdout, format="{time} {level} {message}", level="DEBUG")
 
 
 def execute(cmd: List[str], cwd: str):
@@ -26,7 +24,11 @@ def execute(cmd: List[str], cwd: str):
     """
     logger.info(f"Executing {cmd} in shell.")
     popen = subprocess.Popen(
-        cmd, cwd=Path(config.WORKING_DIR, cwd), stdout=subprocess.PIPE, universal_newlines=True, shell=True
+        cmd,
+        cwd=Path(config.WORKING_DIR, cwd),
+        stdout=subprocess.PIPE,
+        universal_newlines=True,
+        shell=True,
     )
     for stdout_line in iter(popen.stdout.readline, ""):
         yield stdout_line.strip("\n")
@@ -70,7 +72,9 @@ def checkout_branch(branch: str, repo_dir: str):
     :return:
     """
     git_branch = subprocess.run(
-        ["git", "checkout", branch], cwd=Path(config.WORKING_DIR, repo_dir), capture_output=True
+        ["git", "checkout", branch],
+        cwd=Path(config.WORKING_DIR, repo_dir),
+        capture_output=True,
     )
     if git_branch.returncode:
         logger.error(git_branch.stderr.decode("utf-8").strip("\n").replace("\n", " "))
@@ -86,7 +90,9 @@ def get_branches(repo_dir: str) -> List:
     :param repo_dir: The repo directory.
     :return: A list of the branches.
     """
-    git_branch = subprocess.run(["git", "branch"], cwd=Path(config.WORKING_DIR, repo_dir), capture_output=True)
+    git_branch = subprocess.run(
+        ["git", "branch"], cwd=Path(config.WORKING_DIR, repo_dir), capture_output=True
+    )
 
     logger.info(git_branch.stdout.decode("utf-8").strip("\n").replace("\n", " "))
     branches = [
@@ -96,6 +102,7 @@ def get_branches(repo_dir: str) -> List:
         ).split()
     ]
     return branches
+
 
 def create_branch(branch_name: str, repo_dir: str):
     """
@@ -107,19 +114,29 @@ def create_branch(branch_name: str, repo_dir: str):
 
     logger.info(f"Creating {branch_name}")
     git_new_branch = subprocess.run(
-        ["git", "checkout", "-b", branch_name], cwd=Path(config.WORKING_DIR, repo_dir), capture_output=True
+        ["git", "checkout", "-b", branch_name],
+        cwd=Path(config.WORKING_DIR, repo_dir),
+        capture_output=True,
     )
     logger(git_new_branch.stdout.decode("utf-8").strip("\n").replace("\n", " "))
     ## If error, write it out.
     if git_new_branch.returncode:
-        logger.error(git_new_branch.stderr.decode("utf-8").strip("\n").replace("\n", " "))
+        logger.error(
+            git_new_branch.stderr.decode("utf-8").strip("\n").replace("\n", " ")
+        )
         sys.exit(git_new_branch.returncode)
 
     else:
-        logger.info(git_new_branch.stdout.decode("utf-8").strip("\n").replace("\n", " "))
+        logger.info(
+            git_new_branch.stdout.decode("utf-8").strip("\n").replace("\n", " ")
+        )
+
 
 def pull_sfdc_code(
-    username: str, dest_dir: str, metadata_items: List[str] = ["ApexClass"], generate_metadata_list: bool = False
+    username: str,
+    dest_dir: str,
+    metadata_items: List[str] = ["ApexClass"],
+    generate_metadata_list: bool = False,
 ):
     """
     Full code from the instance associated with the username.
@@ -142,7 +159,7 @@ def pull_sfdc_code(
         ["sfdx", "force:source:retrieve", "-u", username, "-m", metadata],
         cwd=Path(os.getcwd(), config.WORKING_DIR, dest_dir),
     ):
-         pulled_files.append(line + "\n")
+        pulled_files.append(line + "\n")
 
     if generate_metadata_list:
         with open("metadata_list.txt", "w") as out_file:
@@ -152,15 +169,19 @@ def pull_sfdc_code(
         f"retrieved {len(pulled_files)} files. File list saved to {Path(os.getcwd(), 'metadata_list.txt')}"
     )
 
+
 def stage_files(repo_dir: str):
 
+    print(Path(os.getcwd(), config.WORKING_DIR, repo_dir))
     """
     Stage the modified files in the repo.
     :param repo_dir: The directory of the repo.
     :return:
     """
     git_add_changes = subprocess.run(
-        ["git", "add", "."], cwd=Path(os.getcwd(), config.WORKING_DIR, repo_dir), capture_output=True
+        ["git", "add", "."],
+        cwd=Path(os.getcwd(), config.WORKING_DIR, repo_dir),
+        capture_output=True,
     )
 
     if git_add_changes.returncode:
@@ -169,7 +190,6 @@ def stage_files(repo_dir: str):
         )
 
     logger.info(git_add_changes.stdout.decode("utf-8").strip("\n").replace("\n", " "))
-
 
 
 def commit_changes(dir_name: str, commit_message: str = None):
@@ -185,11 +205,7 @@ def commit_changes(dir_name: str, commit_message: str = None):
             "git",
             "commit",
             "-m",
-            (
-                commit_message
-                if commit_message is not None
-                else f'"commited files"'
-            ),
+            (commit_message if commit_message is not None else f'"commited files"'),
         ],
         cwd=Path(config.WORKING_DIR, dir_name),
         capture_output=True,
@@ -200,21 +216,39 @@ def commit_changes(dir_name: str, commit_message: str = None):
     logger.info(git_commit.stdout.decode("utf-8").strip("\n").replace("\n", " "))
 
 
-def get_changed_files(target_branch: str, dir_name: str, diff_filter: str="ADM", source_branch: str = None) -> List[str]:
+def get_changed_files(
+    target_branch: str,
+    dir_name: str,
+    diff_filter: str = "ADM",
+    source_branch: str = None,
+) -> List[str]:
 
     if source_branch is None:
         git_diff = subprocess.run(
-            ["git", "diff", target_branch, "--name-only", f"--diff-filter={diff_filter}"],
-            cwd=Path(config.WORKING_DIR, dir_name), capture_output=True
+            [
+                "git",
+                "diff",
+                target_branch,
+                "--name-only",
+                f"--diff-filter={diff_filter}",
+            ],
+            cwd=Path(config.WORKING_DIR, dir_name),
+            capture_output=True,
         )
-
 
     else:
         git_diff = subprocess.run(
-            ["git", "diff", "--name-only", f"--diff-filter={diff_filter}", source_branch, target_branch],
-            cwd=Path(config.WORKING_DIR, dir_name), capture_output=True
+            [
+                "git",
+                "diff",
+                "--name-only",
+                f"--diff-filter={diff_filter}",
+                source_branch,
+                target_branch,
+            ],
+            cwd=Path(config.WORKING_DIR, dir_name),
+            capture_output=True,
         )
-
 
     logger.info(git_diff.stdout.decode("utf-8").strip("\n").replace("\n", " "))
 
@@ -223,8 +257,7 @@ def get_changed_files(target_branch: str, dir_name: str, diff_filter: str="ADM",
     ).split()
 
     if len(changed_files) == 0:
-        print("There are no Files to migrate.")
-        sys.exit()
+        logger.info(f"There are no changed according to filter {diff_filter}")
 
     return changed_files
 
@@ -285,21 +318,18 @@ def log_out_of_orgs(user_list=List[str]):
                 log_out_of_org.stderr.decode("utf-8").strip("\n").replace("\n", " ")
             )
         else:
-            logger.warning(log_out_of_org.stdout.decode("utf-8").strip("\n").replace("\n", " "))
+            logger.warning(
+                log_out_of_org.stdout.decode("utf-8").strip("\n").replace("\n", " ")
+            )
 
 
 def get_active_orgs() -> dict:
     get_org_list = subprocess.run(
-        ["sfdx", "force:org:list", "--json"],
-        cwd=".",
-        capture_output=True,
-        shell=True,
+        ["sfdx", "force:org:list", "--json"], cwd=".", capture_output=True, shell=True
     )
 
     if get_org_list.returncode:
-        logger.error(
-            get_org_list.stderr.decode("utf-8").strip("\n").replace("\n", " ")
-        )
+        logger.error(get_org_list.stderr.decode("utf-8").strip("\n").replace("\n", " "))
         return json.loads(get_org_list.stderr.decode("utf-8"))
 
     return json.loads(get_org_list.stdout.decode("utf-8"))
@@ -333,19 +363,28 @@ def jwt_org_auth(sfdc_instance: SalesForceInstance):
     """
 
     log_into_org = subprocess.run(
-        ["sfdx", "force:auth:jwt:grant", "-u", f"{sfdc_instance.user}", "-f", f"{sfdc_instance.cert}", "-i", f"{sfdc_instance.client_id}", "-a", f"{sfdc_instance.alias}"],
+        [
+            "sfdx",
+            "force:auth:jwt:grant",
+            "-u",
+            f"{sfdc_instance.user}",
+            "-f",
+            f"{sfdc_instance.cert}",
+            "-i",
+            f"{sfdc_instance.client_id}",
+            "-a",
+            f"{sfdc_instance.alias}",
+        ],
         cwd=".",
         capture_output=True,
         shell=True,
     )
     if log_into_org.returncode:
-        logger.error(
-            log_into_org.stderr.decode("utf-8").strip("\n").replace("\n", " ")
-        )
+        logger.error(log_into_org.stderr.decode("utf-8").strip("\n").replace("\n", " "))
     else:
-        logger.warning(log_into_org.stdout.decode("utf-8").strip("\n").replace("\n", " "))
-
-
+        logger.warning(
+            log_into_org.stdout.decode("utf-8").strip("\n").replace("\n", " ")
+        )
 
 
 if __name__ == "__main__":
