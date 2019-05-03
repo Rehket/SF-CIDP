@@ -10,7 +10,6 @@ from typing import List
 from loguru import logger
 
 import config
-from config import SalesForceInstance
 
 logger.add(sys.stdout, format="{time} {level} {message}", level="DEBUG")
 
@@ -19,7 +18,7 @@ def execute(cmd: List[str], cwd: str):
     """
     Execute commands in a shell and pipe them to stdout
     :param cmd: Commands to run in a list of strings
-    :param cwd: the working diirectory to execute the commands in.
+    :param cwd: the working directory to execute the commands in.
     :return:
     """
     logger.info(f"Executing {cmd} in shell.")
@@ -119,7 +118,8 @@ def create_branch(branch_name: str, repo_dir: str):
         capture_output=True,
     )
     logger(git_new_branch.stdout.decode("utf-8").strip("\n").replace("\n", " "))
-    ## If error, write it out.
+
+    # If error, write it out.
     if git_new_branch.returncode:
         logger.error(
             git_new_branch.stderr.decode("utf-8").strip("\n").replace("\n", " ")
@@ -355,10 +355,13 @@ def log_out_of_staging_orgs():
         log_out_of_orgs(user_list=users_to_log_out_of)
 
 
-def jwt_org_auth(sfdc_instance: SalesForceInstance):
+def sfdx_jwt_org_auth(user_name: str, key: str, client_id: str, alias: str):
     """
     Authorize with JWT
-    :param sfdc_instance:
+    :param user_name: Username to use
+    :param key: path to private key file
+    :param client_id: client id for connected app
+    :param alias: Alias for the sandbox.
     :return:
     """
 
@@ -367,13 +370,13 @@ def jwt_org_auth(sfdc_instance: SalesForceInstance):
             "sfdx",
             "force:auth:jwt:grant",
             "-u",
-            f"{sfdc_instance.user}",
+            f"{user_name}",
             "-f",
-            f"{sfdc_instance.cert}",
+            f"{key}",
             "-i",
-            f"{sfdc_instance.client_id}",
+            f"{client_id}",
             "-a",
-            f"{sfdc_instance.alias}",
+            f"{alias}",
         ],
         cwd=".",
         capture_output=True,
