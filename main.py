@@ -13,11 +13,17 @@ import config
 from config import SalesForceInstance
 
 logger.add(
-    "file_{time}.log", format="{time} {level} {message}", level="DEBUG", rotation="5 MB"
+    sys.stdout, format="{time} {level} {message}", level="DEBUG"
 )
 
 
 def execute(cmd: List[str], cwd: str):
+    """
+    Execute commands in a shell and pipe them to stdout
+    :param cmd: Commands to run in a list of strings
+    :param cwd: the working diirectory to execute the commands in.
+    :return:
+    """
     logger.info(f"Executing {cmd} in shell.")
     popen = subprocess.Popen(
         cmd, cwd=Path(config.WORKING_DIR, cwd), stdout=subprocess.PIPE, universal_newlines=True, shell=True
@@ -31,14 +37,24 @@ def execute(cmd: List[str], cwd: str):
 
 
 def pull_git_repo(repo_url: str) -> str:
+    """
+    Pulls the repo of the provided URL
+    :param repo_url: The URL for the repo.
+    :return: The name of the directory where the git repo was vreated.
+    """
     dir_name = os.path.split(repo_url)[1][0:-4]
+
+    #  If the directory already exists, delete it.
     if Path(os.getcwd(), config.WORKING_DIR, dir_name).exists():
         logger.info(f"Found {dir_name} in working directory. Deleting it.")
         os.rename(Path(os.getcwd(), dir_name), Path(os.getcwd(), dir_name + "_Copy"))
+
     logger.info(f"Pulling repo for {repo_url}")
+
     git_clone = subprocess.run(
         ["git", "clone", repo_url], cwd=Path(config.WORKING_DIR), capture_output=True
     )
+
     if git_clone.returncode:
         logger.error(git_clone.stderr.decode("utf-8").strip("\n").replace("\n", " "))
         sys.exit(git_clone.returncode)
@@ -47,6 +63,12 @@ def pull_git_repo(repo_url: str) -> str:
 
 
 def checkout_branch(branch: str, repo_dir: str):
+    """
+    Check out the branch from git
+    :param branch: What branch do you want to check out?
+    :param repo_dir: What directory contains the repo?
+    :return:
+    """
     git_branch = subprocess.run(
         ["git", "checkout", branch], cwd=Path(config.WORKING_DIR, repo_dir), capture_output=True
     )
@@ -59,6 +81,11 @@ def checkout_branch(branch: str, repo_dir: str):
 
 
 def get_branches(repo_dir: str) -> List:
+    """
+    Get the branches in the repo.
+    :param repo_dir: The repo directory.
+    :return: A list of the branches.
+    """
     git_branch = subprocess.run(["git", "branch"], cwd=Path(config.WORKING_DIR, repo_dir), capture_output=True)
 
     logger.info(git_branch.stdout.decode("utf-8").strip("\n").replace("\n", " "))
@@ -68,39 +95,41 @@ def get_branches(repo_dir: str) -> List:
             git_branch.stdout.decode("utf-8").strip("\n").replace("\n", " ")
         ).split()
     ]
-
     return branches
 
-
-def checkout_or_create_branch(branch_name: str, branches: List[str], repo_dir: str):
-    if branch_name in branches:
-        logger.info(f"Retrieving {branch_name}")
-        git_new_branch = subprocess.run(
-            ["git", "checkout", branch_name], cwd=Path(config.WORKING_DIR, repo_dir), capture_output=True
-        )
-        logger(git_new_branch.stdout.decode("utf-8").strip("\n").replace("\n", " "))
-
-    else:
-        logger.info(f"Creating {branch_name}")
-        git_new_branch = subprocess.run(
-            ["git", "checkout", "-b", branch_name], cwd=Path(config.WORKING_DIR, repo_dir), capture_output=True
-        )
-
-    if git_new_branch.returncode:
-        logger.error(
-            git_new_branch.stderr.decode("utf-8").strip("\n").replace("\n", " ")
-        )
-
-
-def pull_sfdc_code(
-    new_files_list: str, sandbox_alias: str, repo_dir: str, metadata_items: List[str] = ["ApexClass"]
-):
+def create_branch(branch_name: str, repo_dir: str):
     """
-    Pulls the metadata items from the sandbox
-    :param new_files_list:
-    :param metadata_items:
+    Create a branch in the repo.
+    :param branch_name: The branch to create
+    :param repo_dir: The directory of the repo
     :return:
     """
+
+    logger.info(f"Creating {branch_name}")
+    git_new_branch = subprocess.run(
+        ["git", "checkout", "-b", branch_name], cwd=Path(config.WORKING_DIR, repo_dir), capture_output=True
+    )
+    logger(git_new_branch.stdout.decode("utf-8").strip("\n").replace("\n", " "))
+    ## If error, write it out.
+    if git_new_branch.returncode:
+        logger.error(git_new_branch.stderr.decode("utf-8").strip("\n").replace("\n", " "))
+        sys.exit(git_new_branch.returncode)
+
+    else:
+        logger.info(git_new_branch.stdout.decode("utf-8").strip("\n").replace("\n", " "))
+
+def pull_sfdc_code(
+    username: str, dest_dir: str, metadata_items: List[str] = ["ApexClass"], generate_metadata_list: bool = False
+):
+    """
+    Full code from the instance associated with the username.
+    :param username: The username of the sfdc user.
+    :param dest_dir: The directory to drop the files in.
+    :param metadata_items: The list of metadata items to retrieve.
+    :param generate_metadata_list: Do you want to generate a list of metadata items.
+    :return:
+    """
+
     # Now Pulling Code
 
     metadata = ""
@@ -108,19 +137,28 @@ def pull_sfdc_code(
         metadata += item + ","
     metadata = metadata[:-1]
 
-    with open(new_files_list, "w") as pulled_files:
-        count = 0
-        for line in execute(
-            ["sfdx", "force:source:retrieve", "-u", sandbox_alias, "-m", metadata],
-            cwd=Path(os.getcwd(), config.WORKING_DIR, repo_dir),
-        ):
-            pulled_files.write(line + "\n")
-            count += 1
+    pulled_files = []
+    for line in execute(
+        ["sfdx", "force:source:retrieve", "-u", username, "-m", metadata],
+        cwd=Path(os.getcwd(), config.WORKING_DIR, dest_dir),
+    ):
+         pulled_files.append(line + "\n")
 
-        logger.info(
-            f"retrieved {count} files. File list saved to {Path(os.getcwd(), new_files_list)}"
-        )
+    if generate_metadata_list:
+        with open("metadata_list.txt", "w") as out_file:
+            out_file.writelines(pulled_files)
 
+    logger.info(
+        f"retrieved {len(pulled_files)} files. File list saved to {Path(os.getcwd(), 'metadata_list.txt')}"
+    )
+
+def stage_files(repo_dir: str):
+
+    """
+    Stage the modified files in the repo.
+    :param repo_dir: The directory of the repo.
+    :return:
+    """
     git_add_changes = subprocess.run(
         ["git", "add", "."], cwd=Path(os.getcwd(), config.WORKING_DIR, repo_dir), capture_output=True
     )
@@ -130,9 +168,18 @@ def pull_sfdc_code(
             git_add_changes.stderr.decode("utf-8").strip("\n").replace("\n", " ")
         )
 
+    logger.info(git_add_changes.stdout.decode("utf-8").strip("\n").replace("\n", " "))
 
-def commit_changes(branch_name: str, dir_name: str, commit_message: str = None):
-    # Checkout Master
+
+
+def commit_changes(dir_name: str, commit_message: str = None):
+
+    """
+    Commit changed files oin the repo.
+    :param dir_name: The directory of the repo.
+    :param commit_message: The commit message.
+    :return:
+    """
     git_commit = subprocess.run(
         [
             "git",
@@ -141,7 +188,7 @@ def commit_changes(branch_name: str, dir_name: str, commit_message: str = None):
             (
                 commit_message
                 if commit_message is not None
-                else f'"added files from sandbox {branch_name}"'
+                else f'"commited files"'
             ),
         ],
         cwd=Path(config.WORKING_DIR, dir_name),
@@ -150,12 +197,24 @@ def commit_changes(branch_name: str, dir_name: str, commit_message: str = None):
     if git_commit.returncode:
         logger.error(git_commit.stderr.decode("utf-8").strip("\n").replace("\n", " "))
 
+    logger.info(git_commit.stdout.decode("utf-8").strip("\n").replace("\n", " "))
 
-def get_changed_files(target_branch: str, dir_name: str) -> List[str]:
-    # Checkout Master
-    git_diff = subprocess.run(
-        ["git", "diff", target_branch, "--name-only"], cwd=Path(config.WORKING_DIR, dir_name), capture_output=True
-    )
+
+def get_changed_files(target_branch: str, dir_name: str, diff_filter: str="ADM", source_branch: str = None) -> List[str]:
+
+    if source_branch is None:
+        git_diff = subprocess.run(
+            ["git", "diff", target_branch, "--name-only", f"--diff-filter={diff_filter}"],
+            cwd=Path(config.WORKING_DIR, dir_name), capture_output=True
+        )
+
+
+    else:
+        git_diff = subprocess.run(
+            ["git", "diff", "--name-only", f"--diff-filter={diff_filter}", source_branch, target_branch],
+            cwd=Path(config.WORKING_DIR, dir_name), capture_output=True
+        )
+
 
     logger.info(git_diff.stdout.decode("utf-8").strip("\n").replace("\n", " "))
 
@@ -210,77 +269,6 @@ def convert_project_to_mdapi():
         logger.error(
             convert_to_metadata.stderr.decode("utf-8").strip("\n").replace("\n", " ")
         )
-
-
-def run_demo():
-    print("Let's Start!")
-
-    github_url = "https://github.com/Rehket/Errors-In-SalesForce.git"
-
-    dir_name = pull_git_repo(github_url)
-
-    checkout_branch("master", dir_name)
-
-    my_branches = get_branches(dir_name)
-
-    my_branch_name = "DevBox"
-
-    checkout_or_create_branch(my_branch_name, my_branches, dir_name)
-
-    files_list = "new_files_list.txt"
-
-    pull_sfdc_code(files_list, my_branch_name, dir_name, ["ApexClass", "ApexTrigger"])
-
-    # Checkout Master
-    commit_changes(my_branch_name)
-
-    target_branch = "master"
-
-    changed_files = get_changed_files(target_branch, dir_name)
-
-    cwd = os.getcwd()
-    if Path(cwd, "mdapi").exists():
-        shutil.rmtree(Path(cwd, "mdapi"))
-    Path(cwd, "mdapi").mkdir(parents=True, exist_ok=True)
-
-    shutil.copy(dir_name + "/sfdx-project.json", Path(cwd, "mdapi"))
-
-    my_test_classes = copy_changed_files_and_get_tests(changed_files, dir_name)
-
-    convert_project_to_mdapi()
-
-    test_class_string = ""
-    for test_class in my_test_classes:
-        test_class_string += test_class + ","
-
-    test_class_string = test_class_string[0:-1]
-    print(test_class_string)
-
-    if len(test_class_string) > 200:
-
-        logger.error(
-            "Woah... You are trying to run a bunch of tests... Try making a smaller deployment."
-        )
-    else:
-        for line in execute(
-                [
-                    "sfdx",
-                    "force:mdapi:deploy",
-                    "-d",
-                    "src",
-                    "-c",
-                    "-u",
-                    my_branch_name,
-                    "-w",
-                    "10",
-                    "-l",
-                    "RunSpecifiedTests",
-                    "-r",
-                    test_class_string,
-                ],
-                cwd="mdapi",
-        ):
-            logger.info(line)
 
 
 def log_out_of_orgs(user_list=List[str]):
@@ -338,7 +326,11 @@ def log_out_of_staging_orgs():
 
 
 def jwt_org_auth(sfdc_instance: SalesForceInstance):
-    # Change CLI to mdapi
+    """
+    Authorize with JWT
+    :param sfdc_instance:
+    :return:
+    """
 
     log_into_org = subprocess.run(
         ["sfdx", "force:auth:jwt:grant", "-u", f"{sfdc_instance.user}", "-f", f"{sfdc_instance.cert}", "-i", f"{sfdc_instance.client_id}", "-a", f"{sfdc_instance.alias}"],
@@ -354,10 +346,7 @@ def jwt_org_auth(sfdc_instance: SalesForceInstance):
         logger.warning(log_into_org.stdout.decode("utf-8").strip("\n").replace("\n", " "))
 
 
+
+
 if __name__ == "__main__":
-
-    log_out_of_staging_orgs()
-
-    jwt_org_auth(config.instance_config_options[0])
-
-
+    pass
