@@ -4,7 +4,7 @@
 
 
 ## What is the purpose of this tool?
-< Name Here > aims to make migrating changes between salesforce environments simple with integration into VCS. 
+**< Some Amazing Name Here >** aims to make migrating changes between salesforce environments simple with integration into VCS. 
  So simple, such that there is no excuse or reason to not do it. 
  
 ### Beta Features
