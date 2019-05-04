@@ -6,7 +6,7 @@ import sys
 import json
 from pathlib import Path
 from typing import List
-
+from prefect import task as prefect_task
 from loguru import logger
 
 import config
@@ -37,6 +37,7 @@ def execute(cmd: List[str], cwd: str):
         raise subprocess.CalledProcessError(return_code, cmd)
 
 
+@prefect_task
 def pull_git_repo(repo_url: str) -> str:
     """
     Pulls the repo of the provided URL
@@ -63,6 +64,7 @@ def pull_git_repo(repo_url: str) -> str:
     return dir_name
 
 
+@prefect_task
 def checkout_branch(branch: str, repo_dir: str):
     """
     Check out the branch from git
@@ -83,6 +85,7 @@ def checkout_branch(branch: str, repo_dir: str):
         logger.info(git_branch.stdout.decode("utf-8").strip("\n").replace("\n", " "))
 
 
+@prefect_task
 def get_branches(repo_dir: str) -> List:
     """
     Get the branches in the repo.
@@ -103,6 +106,7 @@ def get_branches(repo_dir: str) -> List:
     return branches
 
 
+@prefect_task
 def create_branch(branch_name: str, repo_dir: str):
     """
     Create a branch in the repo.
@@ -132,6 +136,7 @@ def create_branch(branch_name: str, repo_dir: str):
         )
 
 
+@prefect_task
 def pull_sfdc_code(
     username: str,
     dest_dir: str,
@@ -170,6 +175,7 @@ def pull_sfdc_code(
     )
 
 
+@prefect_task
 def stage_files(repo_dir: str):
 
     print(Path(os.getcwd(), config.WORKING_DIR, repo_dir))
@@ -192,6 +198,7 @@ def stage_files(repo_dir: str):
     logger.info(git_add_changes.stdout.decode("utf-8").strip("\n").replace("\n", " "))
 
 
+@prefect_task
 def commit_changes(dir_name: str, commit_message: str = None):
 
     """
@@ -216,6 +223,7 @@ def commit_changes(dir_name: str, commit_message: str = None):
     logger.info(git_commit.stdout.decode("utf-8").strip("\n").replace("\n", " "))
 
 
+@prefect_task
 def get_changed_files(
     target_branch: str,
     dir_name: str,
@@ -262,6 +270,7 @@ def get_changed_files(
     return changed_files
 
 
+@prefect_task
 def copy_changed_files_and_get_tests(changed_files: List[str], dir_name: str):
 
     test_classes = []
@@ -289,6 +298,7 @@ def copy_changed_files_and_get_tests(changed_files: List[str], dir_name: str):
     return test_classes
 
 
+@prefect_task
 def convert_project_to_mdapi():
     # Change CLI to mdapi
     convert_to_metadata = subprocess.run(
@@ -304,6 +314,7 @@ def convert_project_to_mdapi():
         )
 
 
+@prefect_task
 def log_out_of_orgs(user_list=List[str]):
     # Change CLI to mdapi
     for user in user_list:
@@ -323,6 +334,7 @@ def log_out_of_orgs(user_list=List[str]):
             )
 
 
+@prefect_task
 def get_active_orgs() -> dict:
     get_org_list = subprocess.run(
         ["sfdx", "force:org:list", "--json"], cwd=".", capture_output=True, shell=True
@@ -335,6 +347,7 @@ def get_active_orgs() -> dict:
     return json.loads(get_org_list.stdout.decode("utf-8"))
 
 
+@prefect_task
 def log_out_of_staging_orgs():
     users = []
 
@@ -355,6 +368,7 @@ def log_out_of_staging_orgs():
         log_out_of_orgs(user_list=users_to_log_out_of)
 
 
+@prefect_task
 def sfdx_jwt_org_auth(user_name: str, key: str, client_id: str, alias: str):
     """
     Authorize with JWT
@@ -388,6 +402,77 @@ def sfdx_jwt_org_auth(user_name: str, key: str, client_id: str, alias: str):
         logger.warning(
             log_into_org.stdout.decode("utf-8").strip("\n").replace("\n", " ")
         )
+
+
+@prefect_task
+def create_sfdx_project(project_name: str) -> int:
+
+    create_project = subprocess.run(
+        [
+            "sfdx", "force:project:create", "--projectname", f"{project_name}", "--template", "standard", "--json"
+        ],
+        cwd=Path(config.WORKING_DIR),
+        capture_output=True,
+        shell=True,
+    )
+
+    output = json.loads(create_project.stdout.decode("utf-8"))
+    status = output["status"]
+    if status is not 0:
+        logger.error(output["result"]["rawOutput"])
+    else:
+        logger.info(output["result"]["rawOutput"])
+
+    return status
+
+
+@prefect_task
+def initialize_git(project_dir: str):
+
+    init_git = subprocess.run(
+        [
+            "git", "init"
+        ],
+        cwd=Path(config.WORKING_DIR, project_dir),
+        capture_output=True,
+        shell=True,
+    )
+
+    status = init_git.returncode
+    if status:
+        logger.error(init_git.stderr.decode("utf-8").strip("\n").replace("\n", " "))
+        logger.error(Path(config.WORKING_DIR, project_dir))
+        return status
+    else:
+        logger.warning(
+            init_git.stdout.decode("utf-8").strip("\n").replace("\n", " ")
+        )
+
+
+@prefect_task
+def git_add(project_dir: str, target_str: str = "."):
+
+    #  Add the items to the repo.
+    init_git = subprocess.run(
+        [
+            "git", "add", f"{target_str}"
+        ],
+        cwd=Path(config.WORKING_DIR, project_dir),
+        capture_output=True,
+        shell=True,
+    )
+
+    status = init_git.returncode
+    if status:
+        logger.error(init_git.stderr.decode("utf-8").strip("\n").replace("\n", " "))
+        logger.error(Path(config.WORKING_DIR, project_dir))
+        return status
+    else:
+        logger.warning(
+            init_git.stdout.decode("utf-8").strip("\n").replace("\n", " ")
+        )
+    return status
+
 
 
 if __name__ == "__main__":
