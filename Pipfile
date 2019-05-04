@@ -8,6 +8,7 @@ verify_ssl = true
 [packages]
 7b084fe = {path = "./prefect"}
 loguru = "*"
+prefect = "*"
 
 [requires]
 python_version = "3.7"
