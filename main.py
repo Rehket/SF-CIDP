@@ -1,11 +1,13 @@
 import push
 from prefect import Flow as PrefectFlow, Parameter
 
+from gob import git_commands
+
 
 create_sfdx_project = push.create_sfdx_project
 pull_sfdc_code = push.pull_sfdc_code
-initialize_git = push.initialize_git
-git_add = push.git_add
+git_init = git_commands.git_init
+git_add = git_commands.git_add
 
 username = Parameter("username")
 my_project_name = Parameter("project_name")
@@ -32,13 +34,13 @@ pull_sfdc_code.bind(
 )
 
 # Initialize a git project.
-flow.add_task(initialize_git)
-initialize_git.set_upstream(pull_sfdc_code, flow=flow)
-initialize_git.bind(project_dir=my_project_name, flow=flow)
+flow.add_task(git_init)
+git_init.set_upstream(pull_sfdc_code, flow=flow)
+git_init.bind(project_dir=my_project_name, flow=flow)
 
 # Add SFDX files to the project.
 flow.add_task(git_add)
-git_add.set_upstream(initialize_git, flow=flow)
+git_add.set_upstream(git_init, flow=flow)
 git_add.bind(project_dir=my_project_name, flow=flow)
 
 # Commit The Files
