@@ -46,15 +46,17 @@ def pull_git_repo(repo_url: str) -> str:
     """
     dir_name = os.path.split(repo_url)[1][0:-4]
 
+    working_dir = os.environ.get("WORKING_DIR", "working_dir")
+
     #  If the directory already exists, delete it.
-    if Path(os.getcwd(), config.WORKING_DIR, dir_name).exists():
+    if Path(os.getcwd(), working_dir, dir_name).exists():
         logger.info(f"Found {dir_name} in working directory. Deleting it.")
         os.rename(Path(os.getcwd(), dir_name), Path(os.getcwd(), dir_name + "_Copy"))
 
     logger.info(f"Pulling repo for {repo_url}")
 
     git_clone = subprocess.run(
-        ["git", "clone", repo_url], cwd=Path(config.WORKING_DIR), capture_output=True
+        ["git", "clone", repo_url], cwd=Path(working_dir), capture_output=True
     )
 
     if git_clone.returncode:
@@ -423,104 +425,6 @@ def create_sfdx_project(project_name: str) -> int:
     else:
         logger.info(output["result"]["rawOutput"])
 
-    return status
-
-
-@prefect_task
-def initialize_git(project_dir: str):
-
-    init_git = subprocess.run(
-        [
-            "git", "init"
-        ],
-        cwd=Path(config.WORKING_DIR, project_dir),
-        capture_output=True,
-        shell=True,
-    )
-
-    status = init_git.returncode
-    if status:
-        logger.error(init_git.stderr.decode("utf-8").strip("\n").replace("\n", " "))
-        logger.error(Path(config.WORKING_DIR, project_dir))
-        return status
-    else:
-        logger.warning(
-            init_git.stdout.decode("utf-8").strip("\n").replace("\n", " ")
-        )
-
-
-@prefect_task
-def git_add(project_dir: str, target_str: str = "."):
-
-    #  Add the items to the repo.
-    init_git = subprocess.run(
-        [
-            "git", "add", f"{target_str}"
-        ],
-        cwd=Path(config.WORKING_DIR, project_dir),
-        capture_output=True,
-        shell=True,
-    )
-
-    status = init_git.returncode
-    if status:
-        logger.error(init_git.stderr.decode("utf-8").strip("\n").replace("\n", " "))
-        logger.error(Path(config.WORKING_DIR, project_dir))
-        return status
-    else:
-        logger.warning(
-            init_git.stdout.decode("utf-8").strip("\n").replace("\n", " ")
-        )
-    return status
-
-
-@prefect_task
-def git_add(project_dir: str, commit_message: str):
-
-    #  Add the items to the repo.
-    commit_git = subprocess.run(
-        [
-            "git", "commit", "-m", f"\"{commit_message}\""
-        ],
-        cwd=Path(config.WORKING_DIR, project_dir),
-        capture_output=True,
-        shell=True,
-    )
-
-    status = commit_git.returncode
-    if status:
-        logger.error(commit_git.stderr.decode("utf-8").strip("\n").replace("\n", " "))
-        logger.error(Path(config.WORKING_DIR, project_dir))
-        return status
-    else:
-        logger.warning(
-            commit_git.stdout.decode("utf-8").strip("\n").replace("\n", " ")
-        )
-    return status
-
-
-@prefect_task
-def git_set_remote(project_dir: str, remote_url: str):
-
-    #  Add the items to the repo.
-    git_set_remote = subprocess.run(
-        [
-            "git", "remote", "add", "origin", f"{remote_url}"
-        ],
-        cwd=Path(config.WORKING_DIR, project_dir),
-        capture_output=True,
-        shell=True,
-    )
-
-    status = git_set_remote.returncode
-    if status:
-        logger.error(git_set_remote.stderr.decode("utf-8").strip("\n").replace("\n", " "))
-        logger.error(Path(config.WORKING_DIR, project_dir))
-        return status
-    else:
-        logger.warning(
-            git_set_remote.stdout.decode("utf-8").strip("\n").replace("\n", " ")
-        )
     return status
 
 
