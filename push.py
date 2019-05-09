@@ -337,7 +337,7 @@ def log_out_of_orgs(user_list=List[str]):
 @prefect_task
 def get_active_orgs() -> dict:
     get_org_list = subprocess.run(
-        ["sfdx", "force:org:list", "--json"], cwd=".", capture_output=True, shell=True
+        ["sfdx", "force:org:list", "--json"], cwd=".", capture_output=True, shell=True,
     )
 
     if get_org_list.returncode:
@@ -473,6 +473,55 @@ def git_add(project_dir: str, target_str: str = "."):
         )
     return status
 
+
+@prefect_task
+def git_add(project_dir: str, commit_message: str):
+
+    #  Add the items to the repo.
+    commit_git = subprocess.run(
+        [
+            "git", "commit", "-m", f"\"{commit_message}\""
+        ],
+        cwd=Path(config.WORKING_DIR, project_dir),
+        capture_output=True,
+        shell=True,
+    )
+
+    status = commit_git.returncode
+    if status:
+        logger.error(commit_git.stderr.decode("utf-8").strip("\n").replace("\n", " "))
+        logger.error(Path(config.WORKING_DIR, project_dir))
+        return status
+    else:
+        logger.warning(
+            commit_git.stdout.decode("utf-8").strip("\n").replace("\n", " ")
+        )
+    return status
+
+
+@prefect_task
+def git_set_remote(project_dir: str, remote_url: str):
+
+    #  Add the items to the repo.
+    git_set_remote = subprocess.run(
+        [
+            "git", "remote", "add", "origin", f"{remote_url}"
+        ],
+        cwd=Path(config.WORKING_DIR, project_dir),
+        capture_output=True,
+        shell=True,
+    )
+
+    status = git_set_remote.returncode
+    if status:
+        logger.error(git_set_remote.stderr.decode("utf-8").strip("\n").replace("\n", " "))
+        logger.error(Path(config.WORKING_DIR, project_dir))
+        return status
+    else:
+        logger.warning(
+            git_set_remote.stdout.decode("utf-8").strip("\n").replace("\n", " ")
+        )
+    return status
 
 
 if __name__ == "__main__":
