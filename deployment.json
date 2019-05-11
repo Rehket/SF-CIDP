@@ -1,0 +1,19 @@
+{
+  "instances": [
+    {
+      "alias": "DevBox1",
+      "user": "automation@iamrehket.me",
+      "test_level": "RunSpecified"
+    },
+    {
+      "alias": "DevBox2",
+      "user": "automation@aalbright.com",
+      "test_level": "RunSpecified"
+    }
+  ],
+  "deployment_type": "flow",
+  "file_selection": "metadata"
+}
+
+
+///////// Build A Flow iterativly from the json, then

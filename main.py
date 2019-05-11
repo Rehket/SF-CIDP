@@ -1,11 +1,11 @@
-import push
+
 from prefect import Flow as PrefectFlow, Parameter
 
-from gob import git_commands
+from gob import git_commands, sfdx_commands
 
 
-create_sfdx_project = push.create_sfdx_project
-pull_sfdc_code = push.pull_sfdc_code
+create_sfdx_project = sfdx_commands.create_sfdx_project
+pull_sfdc_code = sfdx_commands.pull_sfdc_code
 git_init = git_commands.git_init
 git_add = git_commands.git_add
 
@@ -45,10 +45,7 @@ git_add.bind(project_dir=my_project_name, flow=flow)
 
 # Commit The Files
 
-
-
 # Push them to remote
-
 
 if __name__ == "__main__":
     flow.run(
