@@ -12,7 +12,6 @@ git_add = git_commands.git_add
 username = Parameter("username")
 my_project_name = Parameter("project_name")
 metadata_items = Parameter("metadata_items")
-generate_metadata_list = Parameter("generate_metadata_list")
 
 
 # Flow Entry Point
@@ -29,7 +28,6 @@ pull_sfdc_code.bind(
     username=username,
     dest_dir=my_project_name,
     metadata_items=metadata_items,
-    generate_metadata_list=generate_metadata_list,
     flow=flow,
 )
 
@@ -49,8 +47,7 @@ git_add.bind(project_dir=my_project_name, flow=flow)
 
 if __name__ == "__main__":
     flow.run(
-        username="SFDC_USEREmail",
+        username="adam@aalbright.com",
         project_name="SFDX_Project",
-        metadata_items=["ApexClass", "ApexTrigger"],
-        generate_metadata_list=False,
+        metadata_items=["ApexClass"],
     )

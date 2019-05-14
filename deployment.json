@@ -3,12 +3,14 @@
     {
       "alias": "DevBox1",
       "user": "automation@iamrehket.me",
-      "test_level": "RunSpecified"
+      "test_level": "RunSpecified",
+      "stage": "Integration"
     },
     {
       "alias": "DevBox2",
       "user": "automation@aalbright.com",
-      "test_level": "RunSpecified"
+      "test_level": "RunSpecified",
+      "stage": "Prod"
     }
   ],
   "deployment_type": "flow",
