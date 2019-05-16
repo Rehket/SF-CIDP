@@ -1,5 +1,6 @@
 
 from prefect import Flow as PrefectFlow, Parameter
+from prefect.core import Edge
 
 from gob import git_commands, sfdx_commands
 
@@ -8,8 +9,6 @@ create_sfdx_project = sfdx_commands.create_sfdx_project
 pull_sfdc_code = sfdx_commands.pull_sfdc_code
 git_init = git_commands.git_init
 git_add = git_commands.git_add
-
-changed_files = sfdx_commands.copy_changed_files_and_get_tests
 
 username = Parameter("username")
 my_project_name = Parameter("project_name")
@@ -45,6 +44,9 @@ git_add.bind(project_dir=my_project_name, flow=flow)
 
 # TODO: use an edge to link the return values of one task to the input of another :D
 
+# changed_files = sfdx_commands.copy_changed_files_and_get_tests
+# flow.add_task(changed_files)
+# flow.add_edge(pull_sfdc_code, changed_files, key="pull_result")
 
 
 
@@ -52,6 +54,8 @@ git_add.bind(project_dir=my_project_name, flow=flow)
 
 
 # Push them to remote
+
+
 
 if __name__ == "__main__":
     flow.run(

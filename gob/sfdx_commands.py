@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import List, Dict
 from prefect import task as prefect_task, Flow
 from loguru import logger
 import json
@@ -13,7 +13,7 @@ working_dir = os.environ.get("WORKING_DIR", "working_dir")
 @prefect_task
 def pull_sfdc_code(
     username: str, dest_dir: str, metadata_items: List[str] = ["ApexClass"]
-) -> List[dict]:
+) -> Dict[str, object]:
     """
     Full code from the instance associated with the username.
     :param username: The username of the sfdc user.
@@ -36,43 +36,51 @@ def pull_sfdc_code(
         cwd=Path(working_dir, dest_dir),
         capture_output=True,
         shell=True,
-        text=True
+        text=True,
     )
 
     if pull_instance_metadata.returncode:
-        pull_result = json.loads(
-            pull_instance_metadata.stderr
-        )
+        pull_result = json.loads(pull_instance_metadata.stderr)
         raise RuntimeError(pull_result)
 
-    pull_result = json.loads(
-        pull_instance_metadata.stdout
-    )
-    logger.info(
-        f"Retrieved {len(pull_result['result']['inboundFiles'])} files. File list saved to {Path(os.getcwd(), 'metadata_list.txt')}"
-    )
-    return pull_result["result"]["inboundFiles"]
+    pull_result = json.loads(pull_instance_metadata.stdout)
+    logger.info(f"Retrieved {len(pull_result['result']['inboundFiles'])} files.")
+    print(pull_result["result"]["inboundFiles"])
+    return {"files": pull_result["result"]["inboundFiles"], "project_dir": dest_dir}
 
 
 @prefect_task
-def copy_changed_files_and_get_tests(changed_files: List[str], source_dir: str):
+def copy_changed_files_and_get_tests(pull_result: Dict[str, object]):
+
+    print(pull_result)
 
     test_classes = []
-    for file in changed_files:
-        new_path = Path(os.getcwd(), "mdapi", os.path.split(file)[0])
+    for entry in pull_result["files"]:
+        new_path = Path(working_dir, "mdapi", os.path.split(entry["filePath"])[0])
         new_path.mkdir(parents=True, exist_ok=True)
 
-        if file.endswith("-meta.xml"):
-            continue
-        if (
-            file.lower()[0:-4].endswith("test")
-            or file.lower()[0:-4].endswith("tc")
-            and file.endswith(".cls")
-        ):
-            # It is a test Class
-            test_classes.append(os.path.split(file)[1][0:-4])
-        shutil.copy(Path(os.getcwd(), source_dir, file), new_path)
-        shutil.copy(Path(os.getcwd(), source_dir, file + "-meta.xml"), new_path)
+        if entry["fullName"].lower().endswith("test") or entry[
+            "fullName"
+        ].lower().endswith(
+            "tc"
+        ):  # It is a test Class
+            test_classes.append(entry["filePath"])
+
+        shutil.copy(
+            Path(
+                os.getcwd(), working_dir, pull_result["project_dir"], entry["filePath"]
+            ),
+            new_path,
+        )
+        shutil.copy(
+            Path(
+                os.getcwd(),
+                working_dir,
+                pull_result["project_dir"],
+                entry["filePath"][0:-4] + "-meta.xml",
+            ),
+            new_path,
+        )
 
     if len(test_classes) == 0:
         logger.error("No Test Classes were found. Aborting migration.")
