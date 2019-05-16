@@ -9,13 +9,15 @@ pull_sfdc_code = sfdx_commands.pull_sfdc_code
 git_init = git_commands.git_init
 git_add = git_commands.git_add
 
+changed_files = sfdx_commands.copy_changed_files_and_get_tests
+
 username = Parameter("username")
 my_project_name = Parameter("project_name")
 metadata_items = Parameter("metadata_items")
 
 
 # Flow Entry Point
-flow = PrefectFlow("My SFDC Project Build")
+flow = PrefectFlow("My SFDC Project Init")
 
 # Create the SFDX Project
 flow.add_task(create_sfdx_project)
@@ -41,7 +43,13 @@ flow.add_task(git_add)
 git_add.set_upstream(git_init, flow=flow)
 git_add.bind(project_dir=my_project_name, flow=flow)
 
-# Commit The Files
+# TODO: use an edge to link the return values of one task to the input of another :D
+
+
+
+
+
+
 
 # Push them to remote
 
