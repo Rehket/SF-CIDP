@@ -1,10 +1,11 @@
 # SalesForce Continuous Integration and Data Pipeline 
-## Lets get it done faster.
+
+## This project is done mostly for fun and learning, but issues and pull requests are welcome!
 
 
 ## What is the purpose of this tool?
 **< Some Amazing Name Here >** aims to make migrating changes between salesforce environments simple with integration into VCS. 
- So simple, such that there is no excuse or reason to not do it. This project is done mostly for fun and learning, but issues and pull requests are welcome.
+ So simple, such that there is no excuse or reason to not do it.
  
 ### Tasks That kinda work.
 
