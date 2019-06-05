@@ -7,7 +7,7 @@
 **< Some Amazing Name Here >** aims to make migrating changes and data between salesforce environments simple with integration into VCS. 
  So simple, such that there is no reason to not to use verson control, even if the org is a mess :P.
  
-### Tasks That kinda work.
+### Tasks That kinda work. i.e. works in some situations.
 
 - *Quick Deploy from Github to SalesForce* - Take the metadata from a git repo, and put it in a SalesForce instance
 - *Migrate Metadata from one instance to another* - Take the metadata from a SFDC instance, and migrate it to another.
