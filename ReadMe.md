@@ -24,5 +24,3 @@ migrations for admins who do not want to deal with git.
 -------
 
 ![Process Flow](/docs/SF_CICD.png)
-
-TODO: Fix the image
