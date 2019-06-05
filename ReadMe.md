@@ -2,10 +2,9 @@
 ## Lets get it done faster.
 
 
-
 ## What is the purpose of this tool?
 **< Some Amazing Name Here >** aims to make migrating changes between salesforce environments simple with integration into VCS. 
- So simple, such that there is no excuse or reason to not do it. 
+ So simple, such that there is no excuse or reason to not do it. This project is done mostly for fun and learning, but issues and pull requests are welcome.
  
 ### Tasks That kinda work.
 
