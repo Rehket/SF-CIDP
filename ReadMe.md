@@ -7,7 +7,7 @@
 **< Some Amazing Name Here >** aims to make migrating changes between salesforce environments simple with integration into VCS. 
  So simple, such that there is no excuse or reason to not do it. 
  
-### Beta Features
+### Tasks That kinda work.
 
 - *Quick Deploy from Github to SalesForce* - Take the metadata from a git repo, and put it in a SalesForce instance
 - *Migrate Metadata from one instance to another* - Take the metadata from a SFDC instance, and migrate it to another.
