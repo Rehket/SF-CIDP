@@ -4,8 +4,8 @@
 
 
 ## What is the purpose of this tool?
-**< Some Amazing Name Here >** aims to make migrating changes between salesforce environments simple with integration into VCS. 
- So simple, such that there is no excuse or reason to not do it.
+**< Some Amazing Name Here >** aims to make migrating changes and data between salesforce environments simple with integration into VCS. 
+ So simple, such that there is no reason to not to use verson control, even if the org is a mess :P.
  
 ### Tasks That kinda work.
 
